@@ -1,0 +1,28 @@
+HiPC Parallel Programming Challenge 2015 - GPU Track
+====================================================
+
+Directory Structure
+-------------------
+
+This top level README introduces the directory structure of this
+challenge. For more information on the challenge, kindly refer to
+the documentation posted in the challenge forum.
+
+    data/       Contains the datasets. Refer to section on 'Data Sets' in the
+                document.
+    scripts/    Contains scripts to validate and diff your result against the
+                golden value. Refer to section on 'Submission and Evaluation'
+                in the document, which describes the usage of the scripts
+                inside this folder.
+    serial/     Serial implementation of a possible solution to this problem.
+                Refer to section on 'Example Data Sets and Serial
+                Implementation' in order to know more about the algorithm used
+                in this example implementation. This folder also has a README
+                which provides further information on usage.
+    team_name/  Contains a reference Makefile to be used while submitting your
+                code. It also contains a reference implementation of the timer
+                code used to measure the performance of your implementation.
+                This is where your implementation goes.
+                Refer to section on 'Submission and Evaluation' for more
+                details on how to submit.
+

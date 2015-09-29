@@ -1,0 +1,134 @@
+#!/usr/bin/python
+# USAGE:
+#   ../script/checkLAD result.dat ../data/batchXX.dat
+
+import sys
+import re
+
+
+class Circle:
+    Threshold = 0.05   # 5%
+
+    def __init__(self, cx, cy, r):
+        self.cx = float(cx)
+        self.cy = float(cy)
+        self.r = float(r)
+
+    def isSameAs(self, other):
+        return self.approxeq(self.cx, other.cx) and \
+            self.approxeq(self.cy, other.cy) and \
+            self.approxeq(self.r, other.r)
+
+    def approxeq(self, v1, v2):
+        diff = abs(v1 - v2) / abs(v1)
+        return (diff <= Circle.Threshold)
+
+
+class Point:
+    def __init__(self, x, y):
+        self.x = float(x)
+        self.y = float(y)
+
+    def LAD(self, circle):
+        dx = circle.cx - self.x;
+        dy = circle.cy - self.y;
+        r = circle.r
+        diff = (dx * dx) + (dy * dy) - (r * r)
+        return (diff * diff)
+
+    def minLAD(self, circles):
+        minD = -1.0
+        for c in circles:
+            d = self.LAD(c)
+            if minD < 0.0  or  minD > d:
+                minD = d
+        return minD
+
+
+class Event:
+    def __init__(self, bid):
+        self.circles = []
+        self.points = []
+        self.batchId = bid
+
+    def appendPoint(self, point):
+        self.points.append(point)
+
+    def appendCircle(self, circle):
+        # in case the circle matches the one already pushed into this event, just ignore it!
+        for ref in self.circles:
+            if circle.isSameAs(ref):
+                return
+        self.circles.append(circle)
+
+    def evaluateLAD(self):
+        lad = 0.0
+        for p in self.points:
+            lad += p.minLAD(self.circles)
+        return lad
+
+
+class Validator:
+    PassThreshold = 0.85   # 85%
+    EventLadPassThreshold = 1e-10
+
+    def __init__(self, fname_res, fname_batch):
+        self.batches = self.readAllEventsIn(fname_res, fname_batch)
+
+    def readAllEventsIn(self, fname_res, fname_batch):
+        batches = []
+        currEvent = None
+        fpRes = open(fname_res, 'r')
+        fpBatch = open(fname_batch, 'r')
+        nBatches = int(fpBatch.readline())   # currently not used, however!
+        for line in fpRes.readlines():
+            match_event  = re.match(r"^Event:\s*(\d+)\s*$", line)
+            match_time   = re.match(r"^Time:\s*([\d.]*\d)\s*ms\s*$", line)
+            if match_event:
+                eid = int(match_event.group(1))
+                if currEvent is not None:
+                    batches.append(currEvent)
+                currEvent = Event(eid)
+                nPoints = int(fpBatch.readline())
+                for i in range(0,nPoints):
+                    arr = re.split(r'\s+', fpBatch.readline())
+                    currEvent.appendPoint(Point(arr[0], arr[1]))
+            elif match_time:
+                pass
+            else:
+                arr = re.split(r'\s+', line)
+                currEvent.appendCircle(Circle(arr[0], arr[1], arr[2]))
+        if currEvent is not None:
+            batches.append(currEvent)
+        return batches
+
+    def validateResults(self):
+        resEvents = self.batches
+        numPassing = 0;
+        numFailing = 0;
+        for e in resEvents:
+            lad = e.evaluateLAD()
+            if lad > Validator.EventLadPassThreshold:
+                numFailing += 1
+                print('Batch=%4d: LAD=%.6f --> FAIL' % (e.batchId, lad))
+            else:
+                numPassing += 1
+                print('Batch=%4d: LAD=%.6f' % (e.batchId, lad))
+        passRatio = numPassing * 1.0 / (numPassing + numFailing)
+        print('Num PASS=%d, Num FAIL=%d, Pass Percentage=%.2f%%, Pass Percentage Threshold=%0.2f%%' %\
+              (numPassing, numFailing, passRatio*100, Validator.PassThreshold*100))
+        if passRatio >= Validator.PassThreshold:
+            print('Validation PASS')
+            return 0
+        else:
+            print('Validation FAIL')
+            return 1
+
+
+def main(fname_result, fname_batch):
+    validator = Validator(fname_result, fname_batch)
+    return validator.validateResults()
+
+
+if __name__ == '__main__':
+    sys.exit(main(sys.argv[1], sys.argv[2]))
