@@ -1,9 +1,12 @@
 #include <stdio.h>
+//TODO: Lets try to avoid heavy math operations directly from math.h
+//They would tend to slow down the simulation
 #include <math.h>
 #include <stdlib.h>
 #include <kmeans.h>
 
-// some high integer
+//TODO: It is assigned to a float/double
+//We can use the standard FLT_MAX / FLT_MIN
 const float INFTY = 9999999.0;
 
 /* should return an EventResult */
