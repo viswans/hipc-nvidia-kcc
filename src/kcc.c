@@ -4,7 +4,7 @@
 #include <kmeans.h>
 
 // some high integer
-const int INFTY = 9999999;
+const float INFTY = 9999999.0;
 
 /* should return an EventResult */
 /* or even possibly a success or failure */
@@ -27,8 +27,12 @@ EventResult kccalculate( Event* event, int num_clusters )
     res.circles = ( Circle* ) malloc(
             sizeof(Circle) * num_clusters );
 
+    fprintf(stderr, "DEBUG: KCC for %d points - Looking for %d circles\n",
+            npoints, num_clusters);
+
     Point subset[event->no_of_points];
-    for(i=0; i < npoints; ++i)
+    // is a memcpy required here?
+    for(i = 0 ; i < npoints; ++i )
         subset[i] = event->points[i];
 
     /* Picking up the first five points as the cluster representatives.
@@ -36,21 +40,23 @@ EventResult kccalculate( Event* event, int num_clusters )
      */
 
     // TODO: why suddenly double here??
-    double dist=0.0, mindist,x,y;
-    int id; // id to for clasifying and finding bins
+    double error =0.0, minerror;
+    int id = 0; // id to for clasifying and finding bins
     int bin[npoints]; // bin[i] - bin# in which i is placed
-    for(i = 5; i < npoints; ++i)
+    for(i = 0; i < npoints; ++i)
     {
-        mindist = INFTY;
-        for(j=0; j<5; j++) {
+        minerror = INFTY;
+        for(j=0; j < num_clusters; ++j) {
             // calculate distance between pt i and pt j
-            dist = distance( subset[i], subset[j] );
-            if(dist < mindist) {
-                dist = mindist;
+            error = fabs( distance( subset[i], subset[j] ) );
+            if( error < minerror ) {
+                minerror = error;
                 id = j;
             }
         }
         bin[i] = id;            // Appropriate bin for the point.
+        fprintf( stderr, "DEBUG: Point %d => Bin %d Error %f\n",
+                i, bin[i], minerror );
     }
 
     while(1)
@@ -64,34 +70,64 @@ EventResult kccalculate( Event* event, int num_clusters )
             total_points[i] = 0;
             res.circles[i].center.xcoord = 0;
             res.circles[i].center.ycoord = 0;
+            res.circles[i].radius = 0;
         }
 
         for( i = 0; i < npoints; ++i )
         {
             total_points[ bin[i] ]++;
-            res.circles[i].center.xcoord += subset[i].xcoord;
-            res.circles[i].center.ycoord += subset[i].ycoord;
+            res.circles[bin[i]].center.xcoord += subset[i].xcoord;
+            res.circles[bin[i]].center.ycoord += subset[i].ycoord;
         }
 
         for( i = 0; i < num_clusters; ++i )
         {
+            if( total_points[i] != 0 ) {
             res.circles[i].center.xcoord /= total_points[i];
             res.circles[i].center.ycoord /= total_points[i];
-            // TODO: find radius of circle i as well here
+            // radius comptuation would be just a mean of
+            // distance from centers to all the points
+            // caveat being that this might not work for
+            // situations when there are 2 concentric circles
+            }
+        }
+
+        for( i = 0; i < npoints; ++i ) {
+            Point* center = &(res.circles[i].center);
+            double d = distance( *(center), subset[i]);
+            res.circles[bin[i]].radius += d * d;
+        }
+
+        for(i = 0; i < num_clusters; ++i )
+        {
+            // TODO : Check for division by 0
+            if( total_points[i] != 0 )
+            res.circles[i].radius /= total_points[i];
+            res.circles[i].radius = sqrt(res.circles[i].radius);
         }
 
         // Redistribution of points using new cluster centers.
         for( i = 0; i < npoints; ++i )
         {
-            mindist = INFTY;
+            minerror = INFTY;
             for(j = 0; j< num_clusters ; ++j) {
-                dist = distance( subset[i], res.circles[j].center);     // Distance function calculation.
-                if(dist < mindist) {
-                    dist = mindist;
+                error = fabs( distance( subset[i], res.circles[j].center)
+                        - res.circles[j].radius );     // Distance function calculation.
+                if( error < minerror ) {
+                    minerror = error;
                     id = j;
                 }
             }
             bin[i] = id;            // Appropriate bin for the point.
+            fprintf( stderr, "DEBUG: Point %d => Bin %d Error %f\n",
+                    i, bin[i], minerror );
+        }
+
+        for( i = 0; i < num_clusters; ++i) {
+            fprintf( stderr, "DEBUG: %d bin => %d points\n", i, total_points[i]);
+            fprintf( stderr, "DEBUG: Circle: %.4f, %.4f, %.4f\n",
+                    res.circles[i].center.xcoord, res.circles[i].center.ycoord,
+                    res.circles[i].radius );
         }
 
         // TODO: Need a terminating condition.
