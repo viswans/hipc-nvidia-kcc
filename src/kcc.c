@@ -1,9 +1,13 @@
 #include <stdio.h>
+//TODO: Lets try to avoid heavy math operations directly from math.h
+//They would tend to slow down the simulation
 #include <math.h>
 #include <stdlib.h>
 #include <kmeans.h>
 
 // some high integer
+//TODO: It is assigned to a float/double
+//We can use the standard FLT_MAX / FLT_MIN
 const int INFTY = 9999999;
 
 /* should return an EventResult */
@@ -46,7 +50,7 @@ EventResult kccalculate( Event* event, int num_clusters )
             // calculate distance between pt i and pt j
             dist = distance( subset[i], subset[j] );
             if(dist < mindist) {
-                dist = mindist;
+                mindist = dist;
                 id = j;
             }
         }
@@ -87,7 +91,7 @@ EventResult kccalculate( Event* event, int num_clusters )
             for(j = 0; j< num_clusters ; ++j) {
                 dist = distance( subset[i], res.circles[j].center);     // Distance function calculation.
                 if(dist < mindist) {
-                    dist = mindist;
+                    mindist = dist;
                     id = j;
                 }
             }

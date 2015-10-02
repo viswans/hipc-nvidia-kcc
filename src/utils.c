@@ -3,6 +3,7 @@
 /* utils.c - contains some utility functions needed
  * to do computations for kmeans */
 
+//TODO: Do we need to do square root here?
 float distance( Point p1, Point p2 )
 {
     float xdiff = p1.xcoord - p2.xcoord;
